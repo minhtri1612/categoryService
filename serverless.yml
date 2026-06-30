@@ -7,14 +7,22 @@ provider:
   name: aws
   runtime: nodejs22.x
   region: ap-southeast-2
+  environment:
+    BUCKET_NAME: category-image-ads-minhtri1612
+    TABLE_NAME: Category
+  iam:
+    role:
+      name: categoryService-service-role
+      statements:
+        - Effect: Allow
+          Action: s3:PutObject
+          Resource: arn:aws:s3:::category-image-ads-minhtri1612/*
+        - Effect: Allow
+          Action:
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+          Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TABLE_NAME}
 
-functions:
-  hello:
-    handler: handler.hello
-    events:
-      - httpApi:
-          path: /
-          method: get
 resources:
   Resources:
     CategoryImageBucket:
@@ -37,3 +45,19 @@ resources:
         KeySchema:
           - AttributeName: fileName
             KeyType: HASH
+
+functions:
+  getUploadUrl:
+    handler: handlers/getUploadUrl.getUploadUrl
+    events:
+      - httpApi:
+          path: /upload-url
+          method: post
+
+  updateCategoryImage:
+    handler: handlers/updateCategoryImage.updateCategoryImage
+    events:
+      - s3:
+          bucket: ${self:provider.environment.BUCKET_NAME}
+          event: s3:ObjectCreated:*
+          existing: true
