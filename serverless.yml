@@ -10,6 +10,7 @@ provider:
   environment:
     BUCKET_NAME: category-image-ads-minhtri1612
     TABLE_NAME: Category
+    SNS_TOPIC_ARN: arn:aws:sns:ap-southeast-2:629954427603:CategoryCleanupTopic
   iam:
     role:
       name: categoryService-service-role
@@ -21,8 +22,12 @@ provider:
           Action:
             - dynamodb:PutItem
             - dynamodb:UpdateItem
+            - dynamodb:Scan
+            - dynamodb:DeleteItem
           Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TABLE_NAME}
-
+        - Effect: Allow
+          Action: sns:Publish
+          Resource: arn:aws:sns:ap-southeast-2:629954427603:CategoryCleanupTopic
 resources:
   Resources:
     CategoryImageBucket:
@@ -45,7 +50,16 @@ resources:
         KeySchema:
           - AttributeName: fileName
             KeyType: HASH
-
+    CategoryCleanupTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: CategoryCleanupTopic
+    CategoryCleanupSubscription:
+      Type: AWS::SNS::Subscription
+      Properties:
+        TopicArn: arn:aws:sns:ap-southeast-2:629954427603:CategoryCleanupTopic
+        Protocol: email
+        Endpoint: tritran16122004@gmail.com
 functions:
   getUploadUrl:
     handler: handlers/getUploadUrl.getUploadUrl
@@ -61,3 +75,10 @@ functions:
           bucket: ${self:provider.environment.BUCKET_NAME}
           event: s3:ObjectCreated:*
           existing: true
+
+  cleanupCategories:
+    handler: handlers/cleanupCategories.cleanupCategories
+    events:
+      - schedule:
+          rate: rate(1 hour)
+    
